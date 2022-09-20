@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Hello AccountAddressController!{% endblock %}
+
+{% block content %}
+    <a href="{{path('app_account_address_add')}}" class="btn btn-info btn-sm float-right">Ajouter une adresses</a>
+    <h1>Gérer mes adresses</h1>
+    <a href="{{ path('app_account_address')}}">
+        <p>Retour</p>
+    </a>
+
+        {% if app.user.addresses|length == 0 %}
+            <p class="text-center">Vous n'avez pas encore ajouté d' adresse dans votre compte client. Pour en ajouté une, veuillez <a href="{{path('app_account_address_add')}}"> Cliquer ici.</a></p>
+        {% else %}
+            <p>Ajouter une adresse</p> 
+        {% endif %}
+
+{% endblock %}
