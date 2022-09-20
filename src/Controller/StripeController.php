@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Commentaires
+ */
+
+
 namespace App\Controller;
 
 use Stripe\Stripe;
@@ -10,104 +15,70 @@ use Stripe\Checkout\Session;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+
 
 class StripeController extends AbstractController
 {
     #[Route('/commande/create-session/{reference}', name: 'app_stripe_create_session')]
     public function index(EntityManagerInterface $entityManager, Cart $cart, $reference)
-
     {
-        //STRIPE 
-        $products_for_stripe = [];
-        //mettre le chemin du serveur local
-        $YOUR_DOMAIN = 'http://127.0.0.1:8000//public';
+        $product_for_stripe = [];
+        $YOUR_DOMAIN = 'http://127.0.0.1:8000';
 
         $order = $entityManager->getRepository(Order::class)->findOneByReference($reference);
 
-        if (!$order) {
-            new JsonResponse(['error' => 'order']);
-        }
-        //   dd($order->getOrderDetails()->getValues());
-
-        // dd($order);
-
-
-
-        //PRODUITS
+        // Panier
         foreach ($order->getOrderDetails()->getValues() as $product) {
-
-            $product_objet = $entityManager->getRepository(Product::class)->findOneByName($product->getProduct());
-            $products_for_stripe[] = [
+            $product_object = $entityManager->getRepository(Product::class)->findOneBy(['name' => $product->getProduct()]);
+            $product_for_stripe[] = [
                 'price_data' => [
-                    //monnaie
                     'currency' => 'eur',
-                    //prix unitaire
                     'unit_amount' => $product->getPrice(),
-                    //produit base de donnée
                     'product_data' => [
                         'name' => $product->getProduct(),
-                        'images' => [$YOUR_DOMAIN . "/uploads/" . $product_objet->getIllustration()],
+                        'images' => [$YOUR_DOMAIN . "/uploads" . $product_object->getIllustration()],
                     ],
                 ],
-                //quantité du produits 
                 'quantity' => $product->getQuantity(),
             ];
         }
 
-        //TRANSPORTEUR
-
-
-        $products_for_stripe[] = [
+        // Transporteur
+        $product_for_stripe[] = [
             'price_data' => [
-                //monnaie
                 'currency' => 'eur',
-                //prix unitaire
                 'unit_amount' => $order->getCarrierPrice(),
-                //produit base de donnée
                 'product_data' => [
                     'name' => $order->getCarrierName(),
-                    'images' => ["https://dirigeants-entreprise.com/content/uploads/Apps-Colissimo.jpg"],
+                    'images' => [$YOUR_DOMAIN],
                 ],
             ],
-
-            //quantité du produits 
             'quantity' => 1,
         ];
 
+        // dd($product_for_stripe);
 
-        // dd($products_for_stripe);
+        // API Stripe pour le paiement
+        Stripe::setApiKey('sk_test_51LeOHYBy39DOXZlGW09bx55BbH1bl4HiaBQbUKUns3aW94VFvRowCJUx8b7gohpOWSe7g4ms1y57H3AAub444zsX00ehwupWiB');
 
-
-
-        Stripe::setApiKey('sk_test_51LieLtLv8IqE4Bc33y5pBGo6yAejtL8r2dWK2dYNIWdtsoberogQoaAVJUR87Eo2P8qWvpjQbkLGvpHqoWmv8CQC002PvXPEkR');
-
-
-        //method static
         $checkout_session = Session::create([
-            //met l'email de l'utilisateur automatiquement dans stripe 
             'customer_email' => $this->getUser()->getEmail(),
-
-            'payment_method_types' => ['card'],
-            //ligne des éléments
             'line_items' => [
-                $products_for_stripe,
+                $product_for_stripe
+            ],
+            'payment_method_types' => [
+                'card',
             ],
             'mode' => 'payment',
-            'success_url' => $YOUR_DOMAIN . '/success.html',
-            'cancel_url' => $YOUR_DOMAIN . '/cancel.html',
+            'success_url' => $YOUR_DOMAIN . '/commande/merci/{CHECKOUT_SESSION_ID}',
+            'cancel_url' => $YOUR_DOMAIN . '/commande/erreur/{CHECKOUT_SESSION_ID}',
         ]);
 
-        // $response = new JsonResponse(['id' => $checkout_session->id]);
-        // return $response;
+        $order->setStripeSessionId($checkout_session->id);
 
-        //redirection vers la page de strip payment
+        $entityManager->flush();
+
         return $this->redirect($checkout_session->url);
     }
-
-    // dd($products_for_stripe);
-    //   dump($checkout_session->id);
-    // dd($checkout_session);
-
 }

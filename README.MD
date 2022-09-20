@@ -7,6 +7,10 @@ git commit -m "first commit"
 git branch -M main
 git remote add origin https://github.com/nyko972/laboutiquefrancaise.git
 git push -u origin main
+
+git add .
+git commit -m "first commit"
+git push -u origin main
 ```
 ## 01 Introduction
 - [ ]  001 Le programme de la formation étape par étape
